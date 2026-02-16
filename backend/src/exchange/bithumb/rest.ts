@@ -30,6 +30,7 @@ import {
   virtualAssetWarningSchema,
   privateStatusSchema,
   ordersChanceSchema,
+  accountsResponseSchema,
 } from './schemas.js';
 
 const DEFAULT_MARKET = 'KRW-BTC';
@@ -82,7 +83,7 @@ export async function getVirtualAssetWarning() {
 // ─── PRIVATE ──────────────────────────────────────────────────────────────
 
 export async function getAccounts() {
-  return requestPrivateValidated(PRIVATE_ACCOUNTS, { method: 'GET' }, privateStatusSchema);
+  return requestPrivateValidated(PRIVATE_ACCOUNTS, { method: 'GET' }, accountsResponseSchema);
 }
 
 export async function getOrdersChance(market: string = DEFAULT_MARKET) {

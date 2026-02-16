@@ -64,6 +64,15 @@ export class CandleStore {
     return rows.reverse(); // 오래된 → 최신 순
   }
 
+  /** 최근 n개 봉 중 최고가 (DCA 급락 판단용) */
+  getMaxHigh(n: number): number {
+    const rows = this.db.prepare(
+      'SELECT MAX(t.high) as m FROM (SELECT high FROM candles ORDER BY timestamp DESC LIMIT ?) AS t',
+    ).all(n) as { m: number | null }[];
+    const v = rows[0]?.m;
+    return typeof v === 'number' ? v : 0;
+  }
+
   count(): number {
     const row = this.db.prepare('SELECT COUNT(*) as cnt FROM candles').get() as { cnt: number };
     return row.cnt;

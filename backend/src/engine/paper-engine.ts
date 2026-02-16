@@ -10,6 +10,7 @@ import { calcPositionSize } from '../risk/position-sizer.js';
 import { AuditLog } from '../safety/audit-log.js';
 import { ModeManager } from '../mode/mode-manager.js';
 import type { Strategy } from '../strategy/strategy.js';
+import type { Notifier } from '../notification/notifier.js';
 
 const log = createChildLogger('paper-engine');
 
@@ -32,6 +33,7 @@ export class PaperEngine {
   private readonly modeMgr: ModeManager;
   private readonly strategy: Strategy;
   private readonly getAuto: GetAuto;
+  private readonly notifier: Notifier | null;
 
   private equity: number;
   private lastOrderBook: OrderBook | null = null;
@@ -43,6 +45,9 @@ export class PaperEngine {
     audit: AuditLog,
     modeMgr: ModeManager,
     getAuto: GetAuto,
+    notifier?: Notifier | null,
+    /** 전략별 자금 배분 시 사용 (미지정 시 initialKrw 전체) */
+    initialEquity?: number,
   ) {
     this.strategy = strategy;
     this.stateMachine = stateMachine;
@@ -50,13 +55,14 @@ export class PaperEngine {
     this.audit = audit;
     this.modeMgr = modeMgr;
     this.getAuto = getAuto;
+    this.notifier = notifier ?? null;
 
     this.bus = new EventBus();
     this.posMgr = new PositionManager(this.bus, {
       trailingStopAtrMultiplier: config.strategy.trailingStopAtrMultiplier,
     });
     this.atr = new ATR(config.strategy.atrPeriod);
-    this.equity = config.capital.initialKrw;
+    this.equity = initialEquity ?? config.capital.initialKrw;
   }
 
   /**
@@ -156,6 +162,8 @@ export class PaperEngine {
       sl: sizing.stopLoss,
       equity: this.equity,
     }, 'Paper entry');
+
+    this.notifier?.notifyEntry(fillPrice, sizing.qty, sizing.stopLoss);
   }
 
   private tryExit(candle: Candle): void {
@@ -191,6 +199,8 @@ export class PaperEngine {
     }), 'PAPER');
 
     log.info({ price: fillPrice, pnl: result.pnl, equity: this.equity }, 'Paper exit');
+
+    this.notifier?.notifyExit(fillPrice, pos.qty, result.pnl, 'SIGNAL');
   }
 
   private executeStop(candle: Candle, stopPrice: number): void {
@@ -228,6 +238,8 @@ export class PaperEngine {
     }), 'PAPER');
 
     log.info({ stopPrice, pnl: result.pnl, equity: this.equity }, 'Paper stop hit');
+
+    this.notifier?.notifyExit(stopPrice, pos.qty, result.pnl, 'STOP_HIT');
   }
 
   /** 호가 있으면 매수=best ask, 매도=best bid 기준; 없으면 종가 ± 슬리피지 */

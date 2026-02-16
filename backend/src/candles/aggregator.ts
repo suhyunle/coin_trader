@@ -90,6 +90,11 @@ export class CandleAggregator {
     return { tickCount: this.tickCount, droppedCount: this.droppedCount };
   }
 
+  /** 현재 집계 중인 봉의 타임스탬프 (없으면 null) */
+  getLastCandleTimestamp(): number | null {
+    return this.current?.timestamp ?? null;
+  }
+
   private closeCurrent(): void {
     if (this.current) {
       this.onClose(this.freezeCandle(this.current));

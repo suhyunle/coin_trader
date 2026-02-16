@@ -3,10 +3,12 @@ import type { AppState, CandleDto, PositionDto, RiskDto, TimelineEventDto, Strat
 export const mockState: AppState = {
   mode: "PAPER",
   auto: true,
+  kill: false,
   wsStatus: "CONNECTED",
   latencyMs: 42,
   rateLimitOk: true,
   lastError: null,
+  liveTradingAvailable: false,
 };
 
 export const mockCandles: CandleDto[] = (() => {

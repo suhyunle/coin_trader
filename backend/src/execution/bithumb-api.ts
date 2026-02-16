@@ -25,6 +25,20 @@ export interface BithumbOrderInfo {
   qty: number;
   status: string;
   filledQty: number;
+  /** 시장가 매수(price) 시 주문 금액(KRW); filledQty와 함께 평균체결가 계산 가능 */
+  executedVolume?: number;
+}
+
+/** GET /v1/orders 목록 항목 (state: wait | watch | done | cancel) */
+export interface BithumbOrderListItem {
+  uuid: string;
+  side: string;
+  ord_type: string;
+  price: string;
+  state: string;
+  volume: string;
+  executed_volume: string;
+  created_at?: string;
 }
 
 /**
@@ -148,6 +162,7 @@ export class BithumbPrivateApi {
 
   /**
    * 개별 주문 조회 (GET /v1/order?uuid=...)
+   * 시장가 매수(ord_type=price) 시 price = 주문 KRW 금액, executed_volume = 체결된 BTC 수량 → 평균체결가 = price/executed_volume
    */
   async getOrder(uuid: string): Promise<BithumbOrderInfo | null> {
     await this.limiter.acquire();
@@ -155,6 +170,7 @@ export class BithumbPrivateApi {
       const res = await bithumb.getOrder(uuid) as Record<string, unknown> | null;
       if (!res) return null;
 
+      const executedVolume = Number(res['executed_volume'] ?? 0);
       return {
         orderId: String(res['uuid'] ?? uuid),
         side: res['side'] === 'bid' ? 'bid' : 'ask',
@@ -162,11 +178,38 @@ export class BithumbPrivateApi {
         price: Number(res['price'] ?? 0),
         qty: Number(res['volume'] ?? 0),
         status: String(res['state'] ?? ''),
-        filledQty: Number(res['executed_volume'] ?? 0),
+        filledQty: executedVolume,
+        executedVolume,
       };
     } catch (err) {
       log.warn({ err, uuid }, 'getOrder failed');
       return null;
+    }
+  }
+
+  /**
+   * 주문 리스트 (GET /v1/orders?market=...&state=...)
+   * state: wait | watch | done | cancel
+   */
+  async getOrders(params: { market?: string; state?: string; page?: number; limit?: number }): Promise<BithumbOrderListItem[]> {
+    await this.limiter.acquire();
+    try {
+      const res = await bithumb.getOrders({
+        market: params.market ?? this.market,
+        state: params.state,
+        page: params.page,
+        limit: params.limit,
+      }) as unknown;
+      if (!Array.isArray(res)) {
+        const obj = res as Record<string, unknown>;
+        const arr = (obj?.data ?? obj?.orders ?? obj) as unknown;
+        if (!Array.isArray(arr)) return [];
+        return arr as BithumbOrderListItem[];
+      }
+      return res as BithumbOrderListItem[];
+    } catch (err) {
+      log.warn({ err }, 'getOrders failed');
+      return [];
     }
   }
 
@@ -241,9 +284,17 @@ export class BithumbPrivateApi {
       return { orderId, status: 'success' };
     }
 
-    // 에러
-    const errMsg = r['message'] ?? r['error'] ?? JSON.stringify(r);
-    log.warn({ res: r }, 'Order failed');
+    // 에러 (빗썸: { error: { name, message } })
+    const errObj = r['error'] as { name?: string; message?: string } | undefined;
+    const errMsg =
+      (errObj && typeof errObj === 'object' && errObj.message)
+        ? errObj.message
+        : (r['message'] ?? JSON.stringify(r));
+    if (errObj?.name === 'bank_account_required') {
+      log.warn({ res: r }, 'Order failed — 실명확인 및 입출금 계좌 등록 후 이용 가능합니다.');
+    } else {
+      log.warn({ res: r }, 'Order failed');
+    }
     return { orderId: '', status: 'error', message: String(errMsg) };
   }
 }

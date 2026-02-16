@@ -12,7 +12,7 @@ interface ChartSectionProps {
   tradeAllowed?: boolean;
 }
 
-export function ChartSection({
+export default function ChartSection({
   candles,
   lastPrice = 0,
   trend = "Side",

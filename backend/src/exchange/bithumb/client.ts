@@ -3,8 +3,7 @@ import { join } from 'node:path';
 import { request as undiciRequest } from 'undici';
 import { createChildLogger } from '../../logger.js';
 import { config } from '../../config.js';
-import { BITHUMB_REST_BASE } from './endpoints.js';
-import { createBithumbJwt } from './auth.js';
+import { createBithumbJwt, sha512QueryString, sha512QueryStringFromBody } from './auth.js';
 import type { z } from 'zod';
 
 const log = createChildLogger('bithumb-client');
@@ -46,7 +45,7 @@ export async function requestPublic<T>(
   query: Record<string, string> = {},
   options: { timeoutMs?: number } = {},
 ): Promise<T> {
-  const url = new URL(path, BITHUMB_REST_BASE);
+  const url = new URL(path, config.bithumb.restBaseUrl);
   Object.entries(query).forEach(([k, v]) => url.searchParams.set(k, v));
   const timeout = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   let lastError: Error | null = null;
@@ -128,21 +127,33 @@ export async function requestPrivate(
     timeoutMs?: number;
   },
 ): Promise<unknown> {
-  const url = new URL(path, BITHUMB_REST_BASE);
-  if (options.query) {
-    Object.entries(options.query).forEach(([k, v]) => url.searchParams.set(k, v));
+  const url = new URL(path, config.bithumb.restBaseUrl);
+  const hasQuery = options.query && Object.keys(options.query).length > 0;
+  if (hasQuery) {
+    // 쿼리 해시와 URL 순서 일치시키기 위해 키 정렬 후 동일 순서로 설정
+    const entries = Object.entries(options.query!).sort((a, b) => a[0].localeCompare(b[0]));
+    entries.forEach(([k, v]) => url.searchParams.set(k, v));
   }
   const timeout = options.timeoutMs ?? config.execution.orderTimeoutMs;
-  const token = await createBithumbJwt(config.bithumb.accessKey, config.bithumb.secretKey);
+  const hasBody = options.body && Object.keys(options.body).length > 0;
+  // 빗썸: 파라미터가 있으면(쿼리 또는 body) JWT에 query_hash 필수. POST body는 JSON 키 순서 유지.
+  const queryHash = hasBody
+    ? sha512QueryStringFromBody(options.body!)
+    : hasQuery
+      ? sha512QueryString(options.query!)
+      : undefined;
+  const token = await createBithumbJwt(config.bithumb.accessKey, config.bithumb.secretKey, {
+    queryHash,
+  });
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
     Accept: 'application/json',
   };
   let body: string | undefined;
-  if (options.body && Object.keys(options.body).length > 0) {
-    body = new URLSearchParams(options.body).toString();
-    headers['Content-Type'] = 'application/x-www-form-urlencoded';
+  if (hasBody) {
+    body = JSON.stringify(options.body);
+    headers['Content-Type'] = 'application/json; charset=utf-8';
   }
 
   let lastError: Error | null = null;
@@ -155,11 +166,30 @@ export async function requestPrivate(
         bodyTimeout: timeout,
         headersTimeout: timeout,
       });
-      const raw = (await res.body.json()) as { status?: string; message?: string; data?: unknown };
+      const bodyText = await res.body.text();
+      let raw: { message?: string; error?: { name?: string; message?: string }; [k: string]: unknown };
+      try {
+        raw = (bodyText ? JSON.parse(bodyText) : {}) as typeof raw;
+      } catch {
+        raw = { _rawBody: bodyText };
+      }
 
       if (res.statusCode === 401 || res.statusCode === 403) {
-        log.error({ statusCode: res.statusCode, path }, 'Private API auth error — 즉시 중단');
-        throw new Error(`Bithumb Private API auth error: ${res.statusCode}. 설정 오류로 분류.`);
+        const errName = raw.error?.name ?? (raw.error as { message?: string } | undefined)?.message;
+        const errMsg = raw.error?.message ?? raw.message;
+        log.error(
+          { statusCode: res.statusCode, path, errorName: errName, errorMessage: errMsg, body: bodyText },
+          'Private API auth error — 즉시 중단',
+        );
+        const hint =
+          errName === 'invalid_query_payload'
+            ? 'query_hash 불일치(파라미터 순서/형식 확인)'
+            : errName === 'jwt_verification'
+              ? 'JWT 서명 실패(Secret Key 형식 확인, 필요 시 BITHUMB_SECRET_RAW=true)'
+              : typeof errMsg === 'string'
+                ? errMsg
+                : 'API 키·Secret·query_hash 확인.';
+        throw new Error(`Bithumb Private API auth error: ${res.statusCode}. ${hint}`);
       }
       if (res.statusCode === 429 || res.statusCode >= 500) {
         if (attempt < MAX_RETRIES) {

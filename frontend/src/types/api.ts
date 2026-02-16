@@ -23,6 +23,8 @@ export interface AppState {
   latencyMs: number;
   rateLimitOk: boolean;
   lastError: string | null;
+  /** true면 백엔드가 LIVE로 기동되어 테스트 주문 가능 (대시보드에서 LIVE로 바꿔도 서버가 PAPER면 false) */
+  liveTradingAvailable?: boolean;
 }
 
 export interface CandleDto {

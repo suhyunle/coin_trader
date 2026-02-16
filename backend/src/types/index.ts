@@ -40,3 +40,4 @@ export type {
   TradingState,
   DailyStats,
 } from './risk.js';
+export type { StrategyId, AllocationConfig, LongTermSlice, ShortTermSlice, PortfolioState } from './portfolio.js';

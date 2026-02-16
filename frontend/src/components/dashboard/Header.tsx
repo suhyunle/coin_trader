@@ -106,13 +106,13 @@ export function Header({
         <button
           type="button"
           disabled={busy}
-          title="신규 주문 즉시 중단 (킬스위치)"
+          title={state.kill ? "킬스위치 해제 (신규 주문 재개)" : "신규 주문 즉시 중단 (킬스위치)"}
           onClick={onKill}
           className={`px-3 py-1.5 text-xs font-medium rounded text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed ${
-            state.kill ? "bg-muted cursor-default ring-2 ring-danger" : "bg-danger hover:bg-red-700"
+            state.kill ? "bg-muted ring-2 ring-danger hover:bg-danger/80" : "bg-danger hover:bg-red-700"
           }`}
         >
-          {state.kill ? "KILL ✓" : "KILL"}
+          {state.kill ? "KILL 해제" : "KILL"}
         </button>
         <button type="button" className="p-1.5 text-muted hover:text-foreground" title="설정">
           ⚙

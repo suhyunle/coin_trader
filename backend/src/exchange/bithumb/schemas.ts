@@ -80,6 +80,17 @@ export const privateStatusSchema = z.object({
   data: z.unknown().optional(),
 });
 
+/** GET /v1/accounts 응답: 계정별 잔고 배열 */
+export const accountItemSchema = z.object({
+  currency: z.string(),
+  balance: z.string(),
+  locked: z.string(),
+  avg_buy_price: z.string().optional(),
+  avg_buy_price_modified: z.boolean().optional(),
+  unit_currency: z.string().optional(),
+});
+export const accountsResponseSchema = z.array(accountItemSchema);
+
 export const accountsSchema = privateStatusSchema.and(
   z.object({
     data: z

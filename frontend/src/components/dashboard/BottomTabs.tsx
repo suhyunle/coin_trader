@@ -7,13 +7,20 @@ type TabId = "signals" | "orders" | "diagnostics";
 
 interface BottomTabsProps {
   events: TimelineEventDto[];
+  /** LIVE 시 거래소 체결 내역 (봇 + 수동 주문). Orders 탭에서 events와 병합 표시 */
+  orderHistory?: TimelineEventDto[];
   signals?: TimelineEventDto[];
   diagnostics?: { message: string; ts: number }[];
 }
 
-export function BottomTabs({ events, signals, diagnostics = [] }: BottomTabsProps) {
+export function BottomTabs({ events, orderHistory = [], signals, diagnostics = [] }: BottomTabsProps) {
   const [tab, setTab] = useState<TabId>("signals");
-  const list = tab === "signals" ? (signals ?? events.filter((e) => e.type === "signal")) : tab === "orders" ? events : [];
+  const botOrdersAndFills = events.filter((e) => e.type === "order" || e.type === "fill");
+  const ordersList =
+    tab === "orders"
+      ? [...botOrdersAndFills, ...orderHistory].sort((a, b) => b.ts - a.ts)
+      : [];
+  const list = tab === "signals" ? (signals ?? events.filter((e) => e.type === "signal")) : ordersList;
   const diagList = tab === "diagnostics" ? diagnostics : [];
 
   return (
@@ -53,7 +60,7 @@ export function BottomTabs({ events, signals, diagnostics = [] }: BottomTabsProp
           </ul>
         ) : (
           <ul className="space-y-1 text-xs">
-            {list.slice(0, 20).map((e) => (
+            {list.slice(0, 50).map((e) => (
               <li key={e.id} className="flex gap-2 tabular-nums text-muted">
                 <span suppressHydrationWarning>{new Date(e.ts).toISOString().slice(11, 23)}</span>
                 <span className="text-foreground">{e.summary}</span>
