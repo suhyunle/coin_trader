@@ -22,3 +22,5 @@ npm run frontend  # 대시보드 (http://localhost:3000)
 - `npm run sweep` — 파라미터 스윕
 
 `.env` 설정은 `backend/.env.example` 참고.
+![Uploading 스크린샷 2026-02-16 오후 6.17.02.png…]()
+
