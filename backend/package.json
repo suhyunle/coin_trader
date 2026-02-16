@@ -1,0 +1,33 @@
+{
+  "name": "pjt-0216-backend",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "start": "tsx src/main.ts",
+    "backtest": "tsx src/index.ts backtest",
+    "sweep": "tsx src/index.ts sweep",
+    "paper": "tsx src/main.ts --mode paper",
+    "live": "tsx src/main.ts --mode live",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "dotenv": "^16.4.0",
+    "jose": "^5.9.0",
+    "pino": "^9.0.0",
+    "undici": "^7.0.0",
+    "ws": "^8.16.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/node": "^20.11.0",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

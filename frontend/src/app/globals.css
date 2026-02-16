@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --surface: #0f0f0f;
+  --surface-card: #161616;
+  --border: #262626;
+  --danger: #dc2626;
+  --live: #b91c1c;
+  --buy: #16a34a;
+  --sell: #ea580c;
+  --muted: #737373;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* 숫자 단위: KRW 0자리, BTC 6자리, bps/% 고정 */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

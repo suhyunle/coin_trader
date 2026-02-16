@@ -1,0 +1,19 @@
+node_modules/
+dist/
+*.js
+*.d.ts
+*.js.map
+!vitest.config.ts
+.DS_Store
+.env
+data/*.db
+data/*.db-wal
+data/*.db-shm
+backend/data/
+.env.local
+.env*.local
+
+# IDE / AI 로컬 설정 (푸시 제외)
+.claude/
+.cursor/
+*.local.json

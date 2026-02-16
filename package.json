@@ -1,0 +1,11 @@
+{
+  "name": "pjt-0216",
+  "private": true,
+  "workspaces": ["backend", "frontend"],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspace=pjt-0216-backend",
+    "backend": "npm run start --workspace=pjt-0216-backend",
+    "frontend": "npm run dev --workspace=frontend"
+  }
+}
